@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Administrateurs — IKODY ADMIN</title>
+<link rel="icon" href="/images/logo.png">
+<link rel="stylesheet" href="/admin/css/admin.css">
+</head>
+<body>
+<div class="app-shell">
+  <aside class="sidebar" id="sidebar"></aside>
+  <main class="main-content">
+    <div class="page-title-row">
+      <div>
+        <h1>Administrateurs</h1>
+        <p>Gérez qui peut se connecter et modifier la boutique.</p>
+      </div>
+      <button class="btn btn-primary" onclick="openUserModal()">+ Ajouter un administrateur</button>
+    </div>
+
+    <div id="alertBox"></div>
+
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Nom d'utilisateur</th><th>Rôle</th><th>Créé le</th><th></th></tr></thead>
+        <tbody id="usersBody"><tr class="empty-row"><td colspan="4">Chargement…</td></tr></tbody>
+      </table>
+    </div>
+
+    <div class="card" style="margin-top:30px;">
+      <h3>Changer mon mot de passe</h3>
+      <div id="pwAlert"></div>
+      <form id="pwForm">
+        <div class="form-row-2">
+          <div class="form-group"><label for="currentPw">Mot de passe actuel</label><input type="password" id="currentPw" required></div>
+          <div class="form-group"><label for="newPw">Nouveau mot de passe</label><input type="password" id="newPw" required minlength="6"></div>
+        </div>
+        <button type="submit" class="btn btn-primary">Mettre à jour le mot de passe</button>
+      </form>
+    </div>
+  </main>
+</div>
+
+<!-- Modale ajout utilisateur -->
+<div class="modal-overlay" id="userModalOverlay">
+  <div class="modal-box">
+    <div class="modal-head"><h3>Ajouter un administrateur</h3><button onclick="closeUserModal()">&times;</button></div>
+    <div id="modalAlert"></div>
+    <form id="userForm">
+      <div class="form-group"><label for="uUsername">Nom d'utilisateur</label><input type="text" id="uUsername" required></div>
+      <div class="form-group"><label for="uPassword">Mot de passe</label><input type="password" id="uPassword" required minlength="6"></div>
+      <div class="form-group">
+        <label for="uRole">Rôle</label>
+        <select id="uRole">
+          <option value="admin">Admin — peut gérer les produits, commandes et contenu</option>
+          <option value="owner">Propriétaire — peut aussi gérer les administrateurs</option>
+        </select>
+      </div>
+      <div class="modal-actions">
+        <button type="button" class="btn btn-outline" onclick="closeUserModal()">Annuler</button>
+        <button type="submit" class="btn btn-primary" id="saveUserBtn">Ajouter l'utilisateur</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<script src="/js/icons.js"></script>
+<script src="/admin/js/admin.js"></script>
+<script>
+(async function () {
+  const admin = await initAdminPage('users');
+  if (!admin) return;
+  if (admin.role !== 'owner') {
+    document.querySelector('.main-content').innerHTML = '<div class="alert alert-error">Seul le compte propriétaire peut gérer les administrateurs.</div>';
+    return;
+  }
+  loadUsers();
+})();
+
+async function loadUsers() {
+  const body = document.getElementById('usersBody');
+  try {
+    const users = await AdminAPI.get('/api/users');
+    body.innerHTML = users.map(u => `
+      <tr>
+        <td><strong>${escapeHtml(u.username)}</strong></td>
+        <td><span class="pill pill-${u.role}">${u.role === 'owner' ? 'propriétaire' : 'admin'}</span></td>
+        <td class="text-muted">${fmtDate(u.created_at)}</td>
+        <td><button class="btn btn-sm btn-danger" onclick="deleteUser(${u.id})">Supprimer</button></td>
+      </tr>
+    `).join('');
+  } catch (e) {
+    document.getElementById('alertBox').innerHTML = `<div class="alert alert-error">${escapeHtml(e.message)}</div>`;
+  }
+}
+
+function openUserModal() {
+  document.getElementById('userForm').reset();
+  document.getElementById('modalAlert').innerHTML = '';
+  document.getElementById('userModalOverlay').classList.add('open');
+}
+function closeUserModal() { document.getElementById('userModalOverlay').classList.remove('open'); }
+
+document.getElementById('userForm').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const btn = document.getElementById('saveUserBtn');
+  const alertBox = document.getElementById('modalAlert');
+  btn.disabled = true; btn.textContent = 'Ajout…';
+  try {
+    await AdminAPI.post('/api/users', {
+      username: document.getElementById('uUsername').value.trim(),
+      password: document.getElementById('uPassword').value,
+      role: document.getElementById('uRole').value
+    });
+    closeUserModal();
+    await loadUsers();
+  } catch (err) {
+    alertBox.innerHTML = `<div class="alert alert-error">${escapeHtml(err.message)}</div>`;
+  } finally {
+    btn.disabled = false; btn.textContent = "Ajouter l'utilisateur";
+  }
+});
+
+async function deleteUser(id) {
+  if (!confirm('Retirer cet administrateur ?')) return;
+  try {
+    await AdminAPI.del(`/api/users/${id}`);
+    await loadUsers();
+  } catch (e) { alert(e.message); }
+}
+
+document.getElementById('pwForm').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const alertBox = document.getElementById('pwAlert');
+  alertBox.innerHTML = '';
+  try {
+    await AdminAPI.post('/api/auth/change-password', {
+      current_password: document.getElementById('currentPw').value,
+      new_password: document.getElementById('newPw').value
+    });
+    alertBox.innerHTML = '<div class="alert alert-success">Mot de passe mis à jour.</div>';
+    document.getElementById('pwForm').reset();
+  } catch (err) {
+    alertBox.innerHTML = `<div class="alert alert-error">${escapeHtml(err.message)}</div>`;
+  }
+});
+</script>
+</body>
+</html>

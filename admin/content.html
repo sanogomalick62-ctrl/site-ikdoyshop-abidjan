@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Contenu du Site — IKODY ADMIN</title>
+<link rel="icon" href="/images/logo.png">
+<link rel="stylesheet" href="/admin/css/admin.css">
+</head>
+<body>
+<div class="app-shell">
+  <aside class="sidebar" id="sidebar"></aside>
+  <main class="main-content">
+    <div class="page-title-row">
+      <div>
+        <h1>Contenu du site</h1>
+        <p>Modifiez le texte, les coordonnées et les liens affichés sur votre boutique.</p>
+      </div>
+    </div>
+
+    <div id="alertBox"></div>
+
+    <form id="contentForm">
+      <div class="card">
+        <h3>Identité de la boutique</h3>
+        <div class="form-group"><label for="site_name">Nom de la boutique</label><input type="text" id="site_name"></div>
+        <div class="form-group"><label for="tagline">Slogan</label><input type="text" id="tagline"></div>
+        <div class="form-group"><label for="currency_symbol">Symbole monétaire</label><input type="text" id="currency_symbol" style="max-width:100px;"></div>
+      </div>
+
+      <div class="card">
+        <h3>Page d'accueil</h3>
+        <div class="form-group"><label for="hero_heading">Titre principal</label><input type="text" id="hero_heading"></div>
+        <div class="form-group"><label for="hero_subheading">Sous-titre</label><textarea id="hero_subheading"></textarea></div>
+        <div class="form-group"><label for="banner_message">Bandeau d'annonce en haut de page</label><input type="text" id="banner_message"></div>
+        <div class="form-group"><label for="about_text">Texte "À propos" (pied de page)</label><textarea id="about_text"></textarea></div>
+      </div>
+
+      <div class="card">
+        <h3>Coordonnées</h3>
+        <div class="form-row-2">
+          <div class="form-group"><label for="contact_phone">Téléphone</label><input type="text" id="contact_phone"></div>
+          <div class="form-group"><label for="contact_email">E-mail</label><input type="text" id="contact_email"></div>
+        </div>
+        <div class="form-row-2">
+          <div class="form-group"><label for="contact_whatsapp">Numéro WhatsApp</label><input type="text" id="contact_whatsapp"></div>
+          <div class="form-group"><label for="contact_address">Adresse de la boutique</label><input type="text" id="contact_address"></div>
+        </div>
+      </div>
+
+      <div class="card">
+        <h3>Réseaux sociaux</h3>
+        <div class="form-row-3">
+          <div class="form-group"><label for="instagram_url">URL Instagram</label><input type="text" id="instagram_url"></div>
+          <div class="form-group"><label for="facebook_url">URL Facebook</label><input type="text" id="facebook_url"></div>
+          <div class="form-group"><label for="tiktok_url">URL TikTok</label><input type="text" id="tiktok_url"></div>
+        </div>
+      </div>
+
+      <button type="submit" class="btn btn-primary" id="saveBtn">Enregistrer les modifications</button>
+    </form>
+  </main>
+</div>
+
+<script src="/js/icons.js"></script>
+<script src="/admin/js/admin.js"></script>
+<script>
+const FIELDS = ['site_name','tagline','currency_symbol','hero_heading','hero_subheading','banner_message','about_text',
+  'contact_phone','contact_email','contact_whatsapp','contact_address','instagram_url','facebook_url','tiktok_url'];
+
+(async function () {
+  const admin = await initAdminPage('content');
+  if (!admin) return;
+  try {
+    const content = await AdminAPI.get('/api/content');
+    FIELDS.forEach(k => { if (document.getElementById(k)) document.getElementById(k).value = content[k] || ''; });
+  } catch (e) {
+    document.getElementById('alertBox').innerHTML = `<div class="alert alert-error">${escapeHtml(e.message)}</div>`;
+  }
+})();
+
+document.getElementById('contentForm').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const btn = document.getElementById('saveBtn');
+  const alertBox = document.getElementById('alertBox');
+  btn.disabled = true; btn.textContent = 'Enregistrement…';
+  alertBox.innerHTML = '';
+
+  const payload = {};
+  FIELDS.forEach(k => { payload[k] = document.getElementById(k).value; });
+
+  try {
+    await AdminAPI.put('/api/content', payload);
+    alertBox.innerHTML = '<div class="alert alert-success">Enregistré — les modifications sont visibles sur le site dès maintenant.</div>';
+  } catch (err) {
+    alertBox.innerHTML = `<div class="alert alert-error">${escapeHtml(err.message)}</div>`;
+  } finally {
+    btn.disabled = false; btn.textContent = 'Enregistrer les modifications';
+  }
+});
+</script>
+</body>
+</html>

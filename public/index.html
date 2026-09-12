@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>IKODY SHOP — Maillots de Football</title>
+<meta name="description" content="Maillots de football de club, d'équipe nationale et rétro. Commandez en ligne, confirmation par message.">
+<link rel="icon" href="/images/logo.png">
+<link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+
+<div id="splashScreen" class="splash-screen">
+  <div class="splash-logo-wrap">
+    <img src="/images/logo.png" alt="IKODY SHOP" class="splash-logo">
+    <div class="splash-eyelid"></div>
+  </div>
+  <div class="splash-tagline" data-content="tagline">Portez le maillot. Portez le nombre.</div>
+</div>
+<script>
+(function () {
+  var splash = document.getElementById('splashScreen');
+  if (sessionStorage.getItem('ikody_splash_shown')) {
+    splash.style.display = 'none';
+    return;
+  }
+  sessionStorage.setItem('ikody_splash_shown', '1');
+  setTimeout(function () {
+    splash.classList.add('hide');
+    setTimeout(function () { splash.style.display = 'none'; }, 550);
+  }, 2600);
+})();
+</script>
+
+<div id="siteHeader"></div>
+
+<section class="hero">
+  <div class="wrap">
+    <div>
+      <div class="hero-eyebrow"><span class="dot"></span> NOUVEAUX MAILLOTS DE LA SAISON EN STOCK</div>
+      <h1 data-content="hero_heading">Ton club. Ton nom. Ton numéro.</h1>
+      <p class="lead" data-content="hero_subheading">Des maillots de football au style authentique pour ton club, ton pays et les légendes du rétro. Commande en une minute, on confirme par message.</p>
+      <div class="hero-cta">
+        <a href="/shop.html" class="btn btn-primary">Voir tous les maillots</a>
+        <a href="/shop.html?category=retro" class="btn btn-ghost">Découvrir les maillots rétro</a>
+      </div>
+    </div>
+    <div class="hero-visual">
+      <div class="hero-badge-card">
+        <img src="/images/logo.png" alt="IKODY SHOP">
+        <div class="num">ÉQUIPE № 10</div>
+        <h3>Maillot Domicile 25/26</h3>
+        <div class="price-row">
+          <span class="price">64.99$</span>
+          <span class="strike">79.99$</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="feature-strip">
+  <div class="wrap">
+    <div class="feature-item">
+      <div class="ico" id="icoTruck"></div>
+      <div><h4>Expédition rapide</h4><p>Commandes confirmées par message, expédiées en quelques jours.</p></div>
+    </div>
+    <div class="feature-item">
+      <div class="ico" id="icoMessage"></div>
+      <div><h4>Confirmation humaine</h4><p>Aucune carte bancaire en ligne — nous confirmons chaque commande personnellement.</p></div>
+    </div>
+    <div class="feature-item">
+      <div class="ico" id="icoLayers"></div>
+      <div><h4>Tissu qualité match</h4><p>Respirant, durable, taille fidèle.</p></div>
+    </div>
+  </div>
+</section>
+
+<section class="section">
+  <div class="wrap">
+    <div class="section-head">
+      <div>
+        <p class="eyebrow">En vedette</p>
+        <h2>Les coups de cœur de la semaine</h2>
+        <p>Une sélection tournante des maillots qui partent le plus vite en ce moment.</p>
+      </div>
+      <a href="/shop.html" class="btn btn-outline">Tout voir →</a>
+    </div>
+    <div class="grid-products" id="featuredGrid">
+      <div class="empty-state">Chargement des maillots…</div>
+    </div>
+  </div>
+</section>
+
+<section class="section" style="padding-top:0;">
+  <div class="wrap">
+    <div class="section-head">
+      <div>
+        <p class="eyebrow">Catégories</p>
+        <h2>Acheter par type</h2>
+      </div>
+    </div>
+    <div class="grid-products" style="grid-template-columns: repeat(auto-fill, minmax(260px,1fr));" id="categoryGrid"></div>
+  </div>
+</section>
+
+<div id="siteFooter"></div>
+
+<script src="/js/icons.js"></script>
+<script src="/js/api.js"></script>
+<script src="/js/cart.js"></script>
+<script src="/js/layout.js"></script>
+<script>
+initLayout('home');
+
+document.getElementById('icoTruck').innerHTML = ICONS.truck;
+document.getElementById('icoMessage').innerHTML = ICONS.message;
+document.getElementById('icoLayers').innerHTML = ICONS.layers;
+
+const categories = [
+  { href: '/shop.html?category=club', icon: 'ball', label: 'Maillots de Club' },
+  { href: '/shop.html?category=national', icon: 'trophy', label: 'Équipes Nationales' },
+  { href: '/shop.html?category=retro', icon: 'clock', label: 'Légendes Rétro' },
+  { href: '/shop.html?category=training', icon: 'activity', label: "Tenues d'Entraînement" }
+];
+document.getElementById('categoryGrid').innerHTML = categories.map(c => `
+  <a href="${c.href}" class="product-card" style="text-decoration:none;">
+    <div class="thumb"><span class="placeholder">${ICONS[c.icon]}</span></div>
+    <div class="body"><div class="team">Catégorie</div><h3>${c.label}</h3></div>
+  </a>
+`).join('');
+
+async function loadFeatured() {
+  const grid = document.getElementById('featuredGrid');
+  try {
+    const products = await API.get('/api/products?featured=1');
+    if (products.length === 0) {
+      grid.innerHTML = `<div class="empty-state"><div class="glyph">${ICONS.shirt}</div><p>Aucun maillot en vedette pour le moment — revenez bientôt.</p></div>`;
+      return;
+    }
+    grid.innerHTML = products.map(renderProductCard).join('');
+  } catch (e) {
+    grid.innerHTML = `<div class="empty-state"><div class="glyph">${ICONS.alertTriangle}</div><p>Impossible de charger les produits : ${escapeHtml(e.message)}</p></div>`;
+  }
+}
+
+function renderProductCard(p) {
+  const onSale = p.compare_at_price && p.compare_at_price > p.price;
+  const outOfStock = p.stock <= 0;
+  return `
+    <a href="/product.html?id=${p.id}" class="product-card">
+      <div class="tag-hole">#${p.id}</div>
+      ${outOfStock ? '<div class="badge-out">ÉPUISÉ</div>' : onSale ? '<div class="badge-sale">PROMO</div>' : ''}
+      <div class="thumb">
+        ${p.image_url ? `<img src="${escapeHtml(p.image_url)}" alt="${escapeHtml(p.name)}">` : `<span class="placeholder">${ICONS.shirt}</span>`}
+      </div>
+      <div class="body">
+        <div class="team">${escapeHtml(p.team)}</div>
+        <h3>${escapeHtml(p.name)}</h3>
+        <div class="price-row">
+          <span class="price">${fmtMoney(p.price)}</span>
+          ${onSale ? `<span class="strike">${fmtMoney(p.compare_at_price)}</span>` : ''}
+        </div>
+        <div class="stitch">
+          <span style="font-family:var(--font-mono); font-size:11.5px; text-transform:uppercase; color:var(--ink-soft);">${escapeHtml(p.category)}</span>
+          <span style="font-size:13px; font-weight:700;">Voir →</span>
+        </div>
+      </div>
+    </a>
+  `;
+}
+
+loadFeatured();
+</script>
+</body>
+</html>

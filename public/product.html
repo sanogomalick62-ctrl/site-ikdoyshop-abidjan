@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Maillot — IKODY SHOP</title>
+<link rel="icon" href="/images/logo.png">
+<link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+
+<div id="siteHeader"></div>
+
+<div class="page-head">
+  <div class="wrap">
+    <div class="breadcrumb"><a href="/index.html">Accueil</a> / <a href="/shop.html">Boutique</a> / <span id="crumbName">Maillot</span></div>
+    <h1 id="pageTitle">Chargement…</h1>
+  </div>
+</div>
+
+<div class="section" id="pdContainer">
+  <div class="wrap">
+    <div class="empty-state">Chargement du maillot…</div>
+  </div>
+</div>
+
+<div id="siteFooter"></div>
+
+<script src="/js/icons.js"></script>
+<script src="/js/api.js"></script>
+<script src="/js/cart.js"></script>
+<script src="/js/layout.js"></script>
+<script>
+initLayout('shop');
+
+const id = new URLSearchParams(location.search).get('id');
+let currentProduct = null;
+let selectedSize = null;
+let qty = 1;
+
+async function load() {
+  const container = document.getElementById('pdContainer');
+  if (!id) {
+    container.innerHTML = '<div class="wrap"><div class="empty-state">Aucun produit spécifié.</div></div>';
+    return;
+  }
+  try {
+    const p = await API.get(`/api/products/${id}`);
+    currentProduct = p;
+    selectedSize = p.sizes[0] || null;
+    document.title = `${p.name} — IKODY SHOP`;
+    document.getElementById('pageTitle').textContent = p.name;
+    document.getElementById('crumbName').textContent = p.name;
+    renderProduct();
+  } catch (e) {
+    container.innerHTML = `<div class="wrap"><div class="empty-state"><div class="glyph">${ICONS.alertTriangle}</div><p>${escapeHtml(e.message)}</p></div></div>`;
+  }
+}
+
+function renderProduct() {
+  const p = currentProduct;
+  const onSale = p.compare_at_price && p.compare_at_price > p.price;
+  const outOfStock = p.stock <= 0;
+  const images = (p.images && p.images.length) ? p.images : (p.image_url ? [p.image_url] : []);
+
+  document.getElementById('pdContainer').innerHTML = `
+    <div class="wrap">
+      <div class="pd-layout">
+        <div class="pd-gallery" id="pdGallery">
+          ${images.length ? `
+            <div class="carousel-track" id="carouselTrack">
+              ${images.map(url => `<div class="carousel-slide"><img src="${escapeHtml(url)}" alt="${escapeHtml(p.name)}"></div>`).join('')}
+            </div>
+            ${images.length > 1 ? `
+              <button class="carousel-arrow prev" id="carouselPrev" aria-label="Image précédente">‹</button>
+              <button class="carousel-arrow next" id="carouselNext" aria-label="Image suivante">›</button>
+              <div class="carousel-dots" id="carouselDots">
+                ${images.map((_, i) => `<button class="carousel-dot ${i === 0 ? 'active' : ''}" data-index="${i}" aria-label="Image ${i + 1}"></button>`).join('')}
+              </div>
+            ` : ''}
+          ` : `<span class="placeholder">${ICONS.shirt}</span>`}
+        </div>
+        <div class="pd-info">
+          <div class="team">${escapeHtml(p.team)}${p.league ? ` · ${escapeHtml(p.league)}` : ''}</div>
+          <h1>${escapeHtml(p.name)}</h1>
+          <div class="pd-price-row">
+            <span class="pd-price">${fmtMoney(p.price)}</span>
+            ${onSale ? `<span class="pd-strike">${fmtMoney(p.compare_at_price)}</span>` : ''}
+          </div>
+          <p class="pd-desc">${escapeHtml(p.description || 'Aucune description fournie pour le moment.')}</p>
+
+          <div>
+            <label style="font-weight:700; font-size:13.5px; display:block; margin-bottom:10px;">Taille</label>
+            <div class="size-row" id="sizeRow">
+              ${p.sizes.map(s => `<div class="size-pill ${s === selectedSize ? 'active' : ''}" data-size="${escapeHtml(s)}">${escapeHtml(s)}</div>`).join('')}
+            </div>
+          </div>
+
+          <div class="qty-row">
+            <label style="font-weight:700; font-size:13.5px;">Quantité</label>
+            <div class="qty-stepper">
+              <button id="qtyMinus" type="button">−</button>
+              <span id="qtyDisplay">1</span>
+              <button id="qtyPlus" type="button">+</button>
+            </div>
+          </div>
+
+          <button class="btn btn-primary btn-block" id="addBtn" ${outOfStock ? 'disabled' : ''}>
+            ${outOfStock ? 'Épuisé' : 'Ajouter au panier'}
+          </button>
+          <p class="stock-note ${p.stock > 0 && p.stock <= 5 ? 'low' : ''}">
+            ${outOfStock ? 'Actuellement indisponible.' : p.stock <= 5 ? `Plus que ${p.stock} en stock.` : 'En stock, prêt à expédier.'}
+          </p>
+        </div>
+      </div>
+    </div>
+  `;
+
+  if (images.length > 1) initCarousel(images.length);
+
+  document.querySelectorAll('.size-pill').forEach(pill => {
+    pill.addEventListener('click', () => {
+      selectedSize = pill.getAttribute('data-size');
+      document.querySelectorAll('.size-pill').forEach(x => x.classList.remove('active'));
+      pill.classList.add('active');
+    });
+  });
+
+  document.getElementById('qtyMinus').addEventListener('click', () => {
+    qty = Math.max(1, qty - 1);
+    document.getElementById('qtyDisplay').textContent = qty;
+  });
+  document.getElementById('qtyPlus').addEventListener('click', () => {
+    qty = Math.min(currentProduct.stock || 99, qty + 1);
+    document.getElementById('qtyDisplay').textContent = qty;
+  });
+
+  document.getElementById('addBtn').addEventListener('click', () => {
+    if (!selectedSize) { alert('Veuillez sélectionner une taille.'); return; }
+    Cart.add(currentProduct, selectedSize, qty);
+    openCartDrawer();
+  });
+}
+
+// ---------- Carousel: auto-advances every 3.5s, pauses on hover, supports dots + arrows ----------
+let carouselIndex = 0;
+let carouselTimer = null;
+
+function initCarousel(slideCount) {
+  const track = document.getElementById('carouselTrack');
+  const dots = document.querySelectorAll('.carousel-dot');
+  const gallery = document.getElementById('pdGallery');
+
+  function goTo(i) {
+    carouselIndex = ((i % slideCount) + slideCount) % slideCount;
+    track.style.transform = `translateX(-${carouselIndex * 100}%)`;
+    dots.forEach((d, idx) => d.classList.toggle('active', idx === carouselIndex));
+  }
+
+  function startAuto() {
+    stopAuto();
+    carouselTimer = setInterval(() => goTo(carouselIndex + 1), 3500);
+  }
+  function stopAuto() {
+    if (carouselTimer) clearInterval(carouselTimer);
+  }
+
+  dots.forEach(dot => {
+    dot.addEventListener('click', () => { goTo(Number(dot.getAttribute('data-index'))); startAuto(); });
+  });
+  document.getElementById('carouselPrev').addEventListener('click', () => { goTo(carouselIndex - 1); startAuto(); });
+  document.getElementById('carouselNext').addEventListener('click', () => { goTo(carouselIndex + 1); startAuto(); });
+
+  gallery.addEventListener('mouseenter', stopAuto);
+  gallery.addEventListener('mouseleave', startAuto);
+
+  goTo(0);
+  startAuto();
+}
+
+load();
+</script>
+</body>
+</html>

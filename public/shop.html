@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Tous les Maillots — IKODY SHOP</title>
+<link rel="icon" href="/images/logo.png">
+<link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+
+<div id="siteHeader"></div>
+
+<div class="page-head">
+  <div class="wrap">
+    <div class="breadcrumb"><a href="/index.html">Accueil</a> / Boutique</div>
+    <h1>Tous les Maillots</h1>
+  </div>
+</div>
+
+<div class="section">
+  <div class="wrap">
+    <div class="shop-layout">
+      <aside class="filter-box">
+        <h4>Catégorie</h4>
+        <div class="filter-list" id="categoryFilters">
+          <label><input type="radio" name="category" value=""> Toutes les catégories</label>
+          <label><input type="radio" name="category" value="club"> Club</label>
+          <label><input type="radio" name="category" value="national"> Équipes nationales</label>
+          <label><input type="radio" name="category" value="retro"> Rétro</label>
+          <label><input type="radio" name="category" value="training"> Entraînement</label>
+        </div>
+
+        <div id="leagueFilterBlock" style="display:none;">
+          <h4>Ligue</h4>
+          <div class="filter-list" id="leagueFilters"></div>
+        </div>
+
+        <h4>Recherche</h4>
+        <input type="search" id="searchInput" placeholder="Rechercher une équipe ou un nom…">
+      </aside>
+
+      <div>
+        <div class="section-head" style="margin-bottom:20px;">
+          <p id="resultCount" style="color:var(--ink-soft); font-size:14px;">Chargement…</p>
+        </div>
+        <div class="grid-products" id="productGrid"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div id="siteFooter"></div>
+
+<script src="/js/icons.js"></script>
+<script src="/js/api.js"></script>
+<script src="/js/cart.js"></script>
+<script src="/js/layout.js"></script>
+<script>
+initLayout('shop');
+
+const params = new URLSearchParams(location.search);
+let state = { category: params.get('category') || '', league: params.get('league') || '', search: '' };
+
+function renderProductCard(p) {
+  const onSale = p.compare_at_price && p.compare_at_price > p.price;
+  const outOfStock = p.stock <= 0;
+  return `
+    <a href="/product.html?id=${p.id}" class="product-card">
+      <div class="tag-hole">#${p.id}</div>
+      ${outOfStock ? '<div class="badge-out">ÉPUISÉ</div>' : onSale ? '<div class="badge-sale">PROMO</div>' : ''}
+      <div class="thumb">
+        ${p.image_url ? `<img src="${escapeHtml(p.image_url)}" alt="${escapeHtml(p.name)}">` : `<span class="placeholder">${ICONS.shirt}</span>`}
+      </div>
+      <div class="body">
+        <div class="team">${escapeHtml(p.team)}${p.league ? ` · ${escapeHtml(p.league)}` : ''}</div>
+        <h3>${escapeHtml(p.name)}</h3>
+        <div class="price-row">
+          <span class="price">${fmtMoney(p.price)}</span>
+          ${onSale ? `<span class="strike">${fmtMoney(p.compare_at_price)}</span>` : ''}
+        </div>
+        <div class="stitch">
+          <span style="font-family:var(--font-mono); font-size:11.5px; text-transform:uppercase; color:var(--ink-soft);">${escapeHtml(p.category)}</span>
+          <span style="font-size:13px; font-weight:700;">Voir →</span>
+        </div>
+      </div>
+    </a>
+  `;
+}
+
+async function loadLeagueFilters() {
+  const block = document.getElementById('leagueFilterBlock');
+  const list = document.getElementById('leagueFilters');
+  try {
+    const qs = state.category ? `?category=${encodeURIComponent(state.category)}` : '';
+    const leagues = await API.get('/api/products/leagues' + qs);
+    if (leagues.length === 0) {
+      block.style.display = 'none';
+      if (state.league) { state.league = ''; loadProducts(); }
+      return;
+    }
+    block.style.display = 'block';
+    list.innerHTML = `<label><input type="radio" name="league" value="" ${!state.league ? 'checked' : ''}> Toutes les ligues</label>` +
+      leagues.map(l => `<label><input type="radio" name="league" value="${escapeHtml(l)}" ${state.league === l ? 'checked' : ''}> ${escapeHtml(l)}</label>`).join('');
+    list.querySelectorAll('input').forEach(input => {
+      input.addEventListener('change', () => { state.league = input.value; loadProducts(); });
+    });
+  } catch (e) {
+    block.style.display = 'none';
+  }
+}
+
+async function loadProducts() {
+  const grid = document.getElementById('productGrid');
+  const count = document.getElementById('resultCount');
+  grid.innerHTML = '<div class="empty-state">Chargement des maillots…</div>';
+
+  const qs = new URLSearchParams();
+  if (state.category) qs.set('category', state.category);
+  if (state.league) qs.set('league', state.league);
+  if (state.search) qs.set('search', state.search);
+
+  try {
+    const products = await API.get('/api/products?' + qs.toString());
+    count.textContent = `${products.length} maillot${products.length === 1 ? '' : 's'} trouvé${products.length === 1 ? '' : 's'}`;
+    if (products.length === 0) {
+      grid.innerHTML = `<div class="empty-state"><div class="glyph">${ICONS.search}</div><p>Aucun maillot ne correspond à vos filtres.</p></div>`;
+      return;
+    }
+    grid.innerHTML = products.map(renderProductCard).join('');
+  } catch (e) {
+    grid.innerHTML = `<div class="empty-state"><div class="glyph">${ICONS.alertTriangle}</div><p>${escapeHtml(e.message)}</p></div>`;
+  }
+}
+
+document.querySelectorAll('#categoryFilters input').forEach(input => {
+  input.checked = input.value === state.category;
+  input.addEventListener('change', () => {
+    state.category = input.value;
+    state.league = ''; // reset league when switching category, since leagues are category-specific
+    loadLeagueFilters();
+    loadProducts();
+  });
+});
+
+let searchTimer;
+document.getElementById('searchInput').addEventListener('input', (e) => {
+  clearTimeout(searchTimer);
+  searchTimer = setTimeout(() => { state.search = e.target.value.trim(); loadProducts(); }, 300);
+});
+
+loadLeagueFilters();
+loadProducts();
+</script>
+</body>
+</html>

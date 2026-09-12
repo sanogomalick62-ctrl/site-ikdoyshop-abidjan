@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Commandes — IKODY ADMIN</title>
+<link rel="icon" href="/images/logo.png">
+<link rel="stylesheet" href="/admin/css/admin.css">
+</head>
+<body>
+<div class="app-shell">
+  <aside class="sidebar" id="sidebar"></aside>
+  <main class="main-content">
+    <div class="page-title-row">
+      <div>
+        <h1>Commandes</h1>
+        <p>Toutes les commandes passées sur le site. Suivi manuel — contactez les clients pour confirmer et organiser le paiement.</p>
+      </div>
+    </div>
+
+    <div class="toolbar">
+      <div class="filters">
+        <select id="filterStatus">
+          <option value="">Tous les statuts</option>
+          <option value="new">Nouvelle</option>
+          <option value="contacted">Contacté</option>
+          <option value="confirmed">Confirmée</option>
+          <option value="shipped">Expédiée</option>
+          <option value="completed">Terminée</option>
+          <option value="cancelled">Annulée</option>
+        </select>
+      </div>
+      <input type="search" id="searchInput" placeholder="Rechercher nom, téléphone, référence…" style="width:260px;">
+    </div>
+
+    <div id="alertBox"></div>
+
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr><th>Référence</th><th>Client</th><th>Téléphone</th><th>Articles</th><th>Total</th><th>Statut</th><th>Passée le</th><th></th></tr>
+        </thead>
+        <tbody id="ordersBody"><tr class="empty-row"><td colspan="8">Chargement…</td></tr></tbody>
+      </table>
+    </div>
+  </main>
+</div>
+
+<!-- Modale détail commande -->
+<div class="modal-overlay" id="orderModalOverlay">
+  <div class="modal-box wide" id="orderModalContent"></div>
+</div>
+
+<script src="/js/icons.js"></script>
+<script src="/admin/js/admin.js"></script>
+<script>
+let ALL_ORDERS = [];
+let filters = { status: '', search: '' };
+const statusLabelsFr = { new: 'Nouvelle', contacted: 'Contacté', confirmed: 'Confirmée', shipped: 'Expédiée', completed: 'Terminée', cancelled: 'Annulée' };
+
+(async function () {
+  const admin = await initAdminPage('orders');
+  if (!admin) return;
+  await loadOrders();
+  const openId = new URLSearchParams(location.search).get('id');
+  if (openId) openOrderModal(Number(openId));
+})();
+
+async function loadOrders() {
+  const body = document.getElementById('ordersBody');
+  body.innerHTML = '<tr class="empty-row"><td colspan="8">Chargement…</td></tr>';
+  try {
+    ALL_ORDERS = await AdminAPI.get('/api/orders');
+    renderTable();
+  } catch (e) {
+    document.getElementById('alertBox').innerHTML = `<div class="alert alert-error">${escapeHtml(e.message)}</div>`;
+  }
+}
+
+function renderTable() {
+  const body = document.getElementById('ordersBody');
+  let rows = ALL_ORDERS;
+  if (filters.status) rows = rows.filter(o => o.status === filters.status);
+  if (filters.search) {
+    const s = filters.search.toLowerCase();
+    rows = rows.filter(o => o.customer_name.toLowerCase().includes(s) || o.phone.includes(s) || o.order_ref.toLowerCase().includes(s));
+  }
+
+  if (rows.length === 0) {
+    body.innerHTML = '<tr class="empty-row"><td colspan="8">Aucune commande ne correspond à vos filtres.</td></tr>';
+    return;
+  }
+
+  body.innerHTML = rows.map(o => `
+    <tr>
+      <td class="mono">${escapeHtml(o.order_ref)}</td>
+      <td>${escapeHtml(o.customer_name)}</td>
+      <td class="mono text-muted">${escapeHtml(o.phone)}</td>
+      <td>${o.items.reduce((s,i) => s+i.qty, 0)} article(s)</td>
+      <td class="mono">${fmtMoney(o.total)}</td>
+      <td><span class="${statusPillClass(o.status)}">${statusLabelsFr[o.status] || o.status}</span></td>
+      <td class="text-muted">${fmtDate(o.created_at)}</td>
+      <td><button class="btn btn-sm btn-outline" onclick="openOrderModal(${o.id})">Voir</button></td>
+    </tr>
+  `).join('');
+}
+
+document.getElementById('filterStatus').addEventListener('change', e => { filters.status = e.target.value; renderTable(); });
+let searchTimer;
+document.getElementById('searchInput').addEventListener('input', e => {
+  clearTimeout(searchTimer);
+  searchTimer = setTimeout(() => { filters.search = e.target.value.trim(); renderTable(); }, 250);
+});
+
+function openOrderModal(id) {
+  const o = ALL_ORDERS.find(x => x.id === id);
+  if (!o) return;
+
+  document.getElementById('orderModalContent').innerHTML = `
+    <div class="modal-head">
+      <h3>Commande ${escapeHtml(o.order_ref)}</h3>
+      <button onclick="closeOrderModal()">&times;</button>
+    </div>
+    <div id="orderModalAlert"></div>
+    <div class="form-row-2">
+      <div>
+        <div class="form-group"><label>Client</label><div>${escapeHtml(o.customer_name)}</div></div>
+        <div class="form-group"><label>Téléphone</label><div class="mono">${escapeHtml(o.phone)}</div></div>
+        <div class="form-group"><label>E-mail</label><div>${escapeHtml(o.email || '—')}</div></div>
+        <div class="form-group"><label>Adresse</label><div>${escapeHtml(o.address || '—')}, ${escapeHtml(o.city || '')}</div></div>
+        <div class="form-group"><label>Notes du client</label><div>${escapeHtml(o.notes || '—')}</div></div>
+      </div>
+      <div>
+        <div class="form-group">
+          <label>Articles</label>
+          <div class="table-wrap">
+            <table>
+              <thead><tr><th>Article</th><th>Taille</th><th>Qté</th><th>Prix</th></tr></thead>
+              <tbody>
+                ${o.items.map(i => `<tr><td>${escapeHtml(i.name)}</td><td>${escapeHtml(i.size)}</td><td>${i.qty}</td><td class="mono">${fmtMoney(i.price)}</td></tr>`).join('')}
+              </tbody>
+            </table>
+          </div>
+          <div style="text-align:right; margin-top:10px; font-weight:700;">Total : <span class="mono">${fmtMoney(o.total)}</span></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="form-group">
+      <label for="orderStatus">Statut de la commande</label>
+      <select id="orderStatus">
+        ${['new','contacted','confirmed','shipped','completed','cancelled'].map(s => `<option value="${s}" ${s === o.status ? 'selected' : ''}>${statusLabelsFr[s]}</option>`).join('')}
+      </select>
+    </div>
+    <div class="form-group">
+      <label for="orderNotes">Notes internes</label>
+      <textarea id="orderNotes" placeholder="Notes visibles uniquement par les administrateurs…">${escapeHtml(o.notes_internal || '')}</textarea>
+    </div>
+
+    <div class="modal-actions">
+      <button class="btn btn-danger" onclick="deleteOrder(${o.id})">Supprimer la commande</button>
+      <button class="btn btn-outline" onclick="closeOrderModal()">Fermer</button>
+      <button class="btn btn-primary" onclick="saveOrderStatus(${o.id})">Enregistrer les modifications</button>
+    </div>
+  `;
+  document.getElementById('orderModalOverlay').classList.add('open');
+}
+function closeOrderModal() {
+  document.getElementById('orderModalOverlay').classList.remove('open');
+  history.replaceState(null, '', '/admin/orders.html');
+}
+
+async function saveOrderStatus(id) {
+  try {
+    await AdminAPI.patch(`/api/orders/${id}`, {
+      status: document.getElementById('orderStatus').value,
+      notes: document.getElementById('orderNotes').value
+    });
+    closeOrderModal();
+    await loadOrders();
+  } catch (e) {
+    document.getElementById('orderModalAlert').innerHTML = `<div class="alert alert-error">${escapeHtml(e.message)}</div>`;
+  }
+}
+
+async function deleteOrder(id) {
+  if (!confirm('Supprimer définitivement cette commande ?')) return;
+  try {
+    await AdminAPI.del(`/api/orders/${id}`);
+    closeOrderModal();
+    await loadOrders();
+  } catch (e) {
+    alert(e.message);
+  }
+}
+</script>
+</body>
+</html>

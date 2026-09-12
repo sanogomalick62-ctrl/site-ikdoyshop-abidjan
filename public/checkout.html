@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Paiement — IKODY SHOP</title>
+<link rel="icon" href="/images/logo.png">
+<link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+
+<div id="siteHeader"></div>
+
+<div class="page-head">
+  <div class="wrap">
+    <div class="breadcrumb"><a href="/index.html">Accueil</a> / <a href="/cart.html">Panier</a> / Commande</div>
+    <h1>Finaliser la commande</h1>
+  </div>
+</div>
+
+<div class="section">
+  <div class="wrap">
+    <div class="cart-layout" id="checkoutContent"></div>
+  </div>
+</div>
+
+<div id="siteFooter"></div>
+
+<script src="/js/icons.js"></script>
+<script src="/js/api.js"></script>
+<script src="/js/cart.js"></script>
+<script src="/js/layout.js"></script>
+<script>
+initLayout('cart');
+
+function renderSummary() {
+  const items = Cart.read();
+  return `
+    <div class="summary-box">
+      <h3>Résumé de la commande</h3>
+      ${items.map(i => `
+        <div class="summary-row">
+          <span>${escapeHtml(i.name)} (${escapeHtml(i.size)}) x${i.qty}</span>
+          <span class="price">${fmtMoney(i.price * i.qty)}</span>
+        </div>
+      `).join('')}
+      <div class="summary-row total"><span>Total</span><span class="price">${fmtMoney(Cart.total())}</span></div>
+      <p style="font-size:12.5px; color:var(--ink-soft); margin-top:14px;">
+        Aucun paiement n'est effectué en ligne. Une fois votre commande envoyée, nous vous contacterons par téléphone ou WhatsApp pour confirmer les tailles et convenir du paiement.
+      </p>
+    </div>
+  `;
+}
+
+function render() {
+  const items = Cart.read();
+  const container = document.getElementById('checkoutContent');
+
+  if (items.length === 0) {
+    container.innerHTML = `<div class="empty-state"><div class="glyph">${ICONS.basket}</div><p>Votre panier est vide — ajoutez un maillot avant de passer commande.</p><a href="/shop.html" class="btn btn-primary" style="margin-top:16px;">Parcourir les maillots</a></div>`;
+    return;
+  }
+
+  container.innerHTML = `
+    <div>
+      <div id="formAlert"></div>
+      <form id="checkoutForm">
+        <div class="form-group">
+          <label for="customer_name">Nom complet *</label>
+          <input type="text" id="customer_name" required>
+        </div>
+        <div class="form-row-2">
+          <div class="form-group">
+            <label for="phone">Numéro de téléphone *</label>
+            <input type="tel" id="phone" required>
+            <div class="hint">Nous confirmerons votre commande et vos tailles à ce numéro.</div>
+          </div>
+          <div class="form-group">
+            <label for="email">E-mail (facultatif)</label>
+            <input type="email" id="email">
+          </div>
+        </div>
+        <div class="form-group">
+          <label for="address">Adresse de livraison *</label>
+          <input type="text" id="address" required>
+        </div>
+        <div class="form-group">
+          <label for="city">Ville *</label>
+          <input type="text" id="city" required>
+        </div>
+        <div class="form-group">
+          <label for="notes">Notes de commande (facultatif)</label>
+          <textarea id="notes" placeholder="Créneau de livraison préféré, nom/numéro à imprimer, etc."></textarea>
+        </div>
+        <button type="submit" class="btn btn-primary btn-block" id="submitBtn">Passer la commande</button>
+      </form>
+    </div>
+    <div>${renderSummary()}</div>
+  `;
+
+  document.getElementById('checkoutForm').addEventListener('submit', onSubmit);
+}
+
+async function onSubmit(e) {
+  e.preventDefault();
+  const btn = document.getElementById('submitBtn');
+  const alertBox = document.getElementById('formAlert');
+  alertBox.innerHTML = '';
+  btn.disabled = true;
+  btn.textContent = 'Envoi de la commande…';
+
+  const payload = {
+    customer_name: document.getElementById('customer_name').value.trim(),
+    phone: document.getElementById('phone').value.trim(),
+    email: document.getElementById('email').value.trim(),
+    address: document.getElementById('address').value.trim(),
+    city: document.getElementById('city').value.trim(),
+    notes: document.getElementById('notes').value.trim(),
+    items: Cart.read().map(i => ({ product_id: i.product_id, size: i.size, qty: i.qty }))
+  };
+
+  try {
+    const order = await API.post('/api/orders', payload);
+    Cart.clear();
+    location.href = `/order-confirmation.html?ref=${encodeURIComponent(order.order_ref)}`;
+  } catch (err) {
+    alertBox.innerHTML = `<div class="alert alert-error">${escapeHtml(err.message)}</div>`;
+    btn.disabled = false;
+    btn.textContent = 'Passer la commande';
+  }
+}
+
+render();
+</script>
+</body>
+</html>
