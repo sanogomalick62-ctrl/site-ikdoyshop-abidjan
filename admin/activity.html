@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Activité — IKODY ADMIN</title>
+<link rel="icon" href="/images/logo.png">
+<link rel="stylesheet" href="/admin/css/admin.css">
+</head>
+<body>
+<div class="app-shell">
+  <aside class="sidebar" id="sidebar"></aside>
+  <main class="main-content">
+    <div class="page-title-row">
+      <div>
+        <h1>Activité</h1>
+        <p>Historique des actions effectuées dans le panneau d'administration — qui a fait quoi, et quand.</p>
+      </div>
+      <button class="btn btn-outline" id="refreshBtn">Actualiser</button>
+    </div>
+
+    <div class="toolbar">
+      <div class="filters">
+        <select id="filterAction">
+          <option value="">Toutes les actions</option>
+          <option value="auth.login">Connexions</option>
+          <option value="auth.password_change">Changements de mot de passe</option>
+          <option value="product.create">Produits créés</option>
+          <option value="product.update">Produits modifiés</option>
+          <option value="product.delete">Produits supprimés</option>
+          <option value="order.status">Statuts de commande</option>
+          <option value="order.notes">Notes de commande</option>
+          <option value="order.delete">Commandes supprimées</option>
+          <option value="content.update">Contenu du site</option>
+          <option value="user.create">Administrateurs ajoutés</option>
+          <option value="user.delete">Administrateurs supprimés</option>
+        </select>
+      </div>
+    </div>
+
+    <div id="alertBox"></div>
+
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr><th>Quand</th><th>Qui</th><th>Action</th></tr>
+        </thead>
+        <tbody id="activityBody"><tr class="empty-row"><td colspan="3">Chargement…</td></tr></tbody>
+      </table>
+    </div>
+  </main>
+</div>
+
+<script src="/js/icons.js"></script>
+<script src="/admin/js/admin.js"></script>
+<script>
+let ALL_ACTIVITY = [];
+let filterAction = '';
+
+(async function () {
+  const admin = await initAdminPage('activity');
+  if (!admin) return;
+  loadActivity();
+})();
+
+async function loadActivity() {
+  const body = document.getElementById('activityBody');
+  body.innerHTML = '<tr class="empty-row"><td colspan="3">Chargement…</td></tr>';
+  try {
+    ALL_ACTIVITY = await AdminAPI.get('/api/activity?limit=300');
+    renderTable();
+  } catch (e) {
+    document.getElementById('alertBox').innerHTML = `<div class="alert alert-error">${escapeHtml(e.message)}</div>`;
+  }
+}
+
+function renderTable() {
+  const body = document.getElementById('activityBody');
+  let rows = ALL_ACTIVITY;
+  if (filterAction) rows = rows.filter(r => r.action === filterAction);
+
+  if (rows.length === 0) {
+    body.innerHTML = '<tr class="empty-row"><td colspan="3">Aucune activité enregistrée pour le moment.</td></tr>';
+    return;
+  }
+
+  body.innerHTML = rows.map(r => `
+    <tr>
+      <td class="text-muted mono">${fmtDate(r.created_at)}</td>
+      <td><strong>${escapeHtml(r.actor_username)}</strong> <span class="pill pill-${r.actor_role}">${r.actor_role === 'owner' ? 'propriétaire' : 'admin'}</span></td>
+      <td>${escapeHtml(r.description)}</td>
+    </tr>
+  `).join('');
+}
+
+document.getElementById('filterAction').addEventListener('change', (e) => {
+  filterAction = e.target.value;
+  renderTable();
+});
+document.getElementById('refreshBtn').addEventListener('click', loadActivity);
+</script>
+</body>
+</html>

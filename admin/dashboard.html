@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Tableau de bord — IKODY ADMIN</title>
+<link rel="icon" href="/images/logo.png">
+<link rel="stylesheet" href="/admin/css/admin.css">
+</head>
+<body>
+<div class="app-shell">
+  <aside class="sidebar" id="sidebar"></aside>
+  <main class="main-content">
+    <div class="page-title-row">
+      <div>
+        <h1>Tableau de bord</h1>
+        <p>Un aperçu rapide de l'activité de votre boutique.</p>
+      </div>
+      <a href="/index.html" target="_blank" class="btn btn-outline">Voir le site en ligne ↗</a>
+    </div>
+
+    <div class="stat-grid" id="statGrid"></div>
+
+    <div class="card">
+      <h3>Commandes récentes</h3>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Référence</th><th>Client</th><th>Total</th><th>Statut</th><th>Passée le</th></tr></thead>
+          <tbody id="recentOrdersBody"><tr class="empty-row"><td colspan="5">Chargement…</td></tr></tbody>
+        </table>
+      </div>
+      <div style="margin-top:14px;"><a href="/admin/orders.html" class="btn btn-sm btn-outline">Voir toutes les commandes →</a></div>
+    </div>
+  </main>
+</div>
+
+<script src="/js/icons.js"></script>
+<script src="/admin/js/admin.js"></script>
+<script>
+(async function () {
+  const admin = await initAdminPage('dashboard');
+  if (!admin) return;
+
+  try {
+    const stats = await AdminAPI.get('/api/stats');
+
+    document.getElementById('statGrid').innerHTML = `
+      <div class="stat-card"><div class="label">Chiffre d'affaires total</div><div class="value">${fmtMoney(stats.revenue)}</div></div>
+      <div class="stat-card"><div class="label">Commandes totales</div><div class="value">${stats.totalOrders}</div></div>
+      <div class="stat-card ${stats.newOrders > 0 ? 'alert' : ''}"><div class="label">Nouvelles commandes</div><div class="value">${stats.newOrders}</div></div>
+      <div class="stat-card"><div class="label">Produits actifs</div><div class="value">${stats.activeProducts}</div></div>
+      <div class="stat-card ${stats.lowStock > 0 ? 'alert' : ''}"><div class="label">Stock faible (≤5)</div><div class="value">${stats.lowStock}</div></div>
+    `;
+
+    const statusLabelsFr = { new: 'nouvelle', contacted: 'contacté', confirmed: 'confirmée', shipped: 'expédiée', completed: 'terminée', cancelled: 'annulée' };
+    const body = document.getElementById('recentOrdersBody');
+    if (stats.recentOrders.length === 0) {
+      body.innerHTML = '<tr class="empty-row"><td colspan="5">Aucune commande pour le moment.</td></tr>';
+    } else {
+      body.innerHTML = stats.recentOrders.map(o => `
+        <tr>
+          <td class="mono"><a href="/admin/orders.html?id=${o.id}">${escapeHtml(o.order_ref)}</a></td>
+          <td>${escapeHtml(o.customer_name)}</td>
+          <td class="mono">${fmtMoney(o.total)}</td>
+          <td><span class="${statusPillClass(o.status)}">${statusLabelsFr[o.status] || o.status}</span></td>
+          <td class="text-muted">${fmtDate(o.created_at)}</td>
+        </tr>
+      `).join('');
+    }
+  } catch (e) {
+    document.getElementById('statGrid').innerHTML = `<div class="alert alert-error">${escapeHtml(e.message)}</div>`;
+  }
+})();
+</script>
+</body>
+</html>

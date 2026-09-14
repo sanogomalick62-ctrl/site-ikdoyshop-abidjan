@@ -1,0 +1,335 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Produits — IKODY ADMIN</title>
+<link rel="icon" href="/images/logo.png">
+<link rel="stylesheet" href="/admin/css/admin.css">
+</head>
+<body>
+<div class="app-shell">
+  <aside class="sidebar" id="sidebar"></aside>
+  <main class="main-content">
+    <div class="page-title-row">
+      <div>
+        <h1>Produits</h1>
+        <p>Ajoutez, modifiez ou retirez des maillots du catalogue.</p>
+      </div>
+      <button class="btn btn-primary" onclick="openProductModal()">+ Ajouter un produit</button>
+    </div>
+
+    <div class="toolbar">
+      <div class="filters">
+        <select id="filterCategory">
+          <option value="">Toutes les catégories</option>
+          <option value="club">Club</option>
+          <option value="national">National</option>
+          <option value="retro">Rétro</option>
+          <option value="training">Entraînement</option>
+        </select>
+        <select id="filterActive">
+          <option value="">Tous les statuts</option>
+          <option value="1">Actif</option>
+          <option value="0">Inactif</option>
+        </select>
+      </div>
+      <input type="search" id="searchInput" placeholder="Rechercher un nom ou une équipe…" style="width:240px;">
+    </div>
+
+    <div id="alertBox"></div>
+
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr><th></th><th>Produit</th><th>Équipe</th><th>Catégorie</th><th>Prix</th><th>Stock</th><th>Statut</th><th></th></tr>
+        </thead>
+        <tbody id="productsBody"><tr class="empty-row"><td colspan="8">Chargement…</td></tr></tbody>
+      </table>
+    </div>
+  </main>
+</div>
+
+<!-- Modale Produit -->
+<div class="modal-overlay" id="productModalOverlay">
+  <div class="modal-box wide">
+    <div class="modal-head">
+      <h3 id="modalTitle">Ajouter un produit</h3>
+      <button onclick="closeProductModal()">&times;</button>
+    </div>
+    <div id="modalAlert"></div>
+    <form id="productForm">
+      <input type="hidden" id="productId">
+      <div class="form-row-2">
+        <div>
+          <div class="form-group">
+            <label for="pName">Nom *</label>
+            <input type="text" id="pName" required placeholder="Maillot Domicile 25/26">
+          </div>
+          <div class="form-group">
+            <label for="pTeam">Équipe / club *</label>
+            <input type="text" id="pTeam" required placeholder="Verdano FC">
+          </div>
+          <div class="form-row-2">
+            <div class="form-group">
+              <label for="pCategory">Catégorie</label>
+              <select id="pCategory">
+                <option value="club">Club</option>
+                <option value="national">National</option>
+                <option value="retro">Rétro</option>
+                <option value="training">Entraînement</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label for="pStock">Stock *</label>
+              <input type="number" id="pStock" min="0" required value="0">
+            </div>
+          </div>
+          <div class="form-group">
+            <label for="pLeague">Ligue</label>
+            <input type="text" id="pLeague" list="leagueSuggestions" placeholder="Ligue 1, Serie A, Premier League…">
+            <datalist id="leagueSuggestions">
+              <option value="Ligue 1">
+              <option value="Premier League">
+              <option value="La Liga">
+              <option value="Serie A">
+              <option value="Bundesliga">
+            </datalist>
+            <div class="hint">Facultatif — utile surtout pour la catégorie "Club", permet de sous-filtrer la boutique par ligue.</div>
+          </div>
+          <div class="form-row-2">
+            <div class="form-group">
+              <label for="pPrice">Prix *</label>
+              <input type="number" id="pPrice" min="0" step="0.01" required placeholder="64.99">
+            </div>
+            <div class="form-group">
+              <label for="pCompare">Prix barré</label>
+              <input type="number" id="pCompare" min="0" step="0.01" placeholder="79.99">
+              <div class="hint">Facultatif. Affiché barré pour indiquer une promotion.</div>
+            </div>
+          </div>
+          <div class="form-group">
+            <label for="pSizes">Tailles disponibles</label>
+            <input type="text" id="pSizes" placeholder="S, M, L, XL, XXL" value="S, M, L, XL">
+            <div class="hint">Liste séparée par des virgules.</div>
+          </div>
+        </div>
+        <div>
+          <div class="form-group">
+            <label>Images du produit</label>
+            <div class="image-grid" id="imageGrid"></div>
+            <input type="file" id="pImage" accept="image/*" multiple>
+            <div class="hint">JPG, PNG ou WEBP, jusqu'à 5 Mo chacune, 6 images maximum. La première image est utilisée comme vignette. S'il y en a plusieurs, elles défilent automatiquement sur la fiche produit.</div>
+          </div>
+          <div class="form-group">
+            <label for="pDescription">Description</label>
+            <textarea id="pDescription" placeholder="Tissu, coupe, détails d'impression…"></textarea>
+          </div>
+          <div class="form-group checkbox-row">
+            <input type="checkbox" id="pFeatured">
+            <label for="pFeatured" style="margin:0;">Mettre en avant sur la page d'accueil</label>
+          </div>
+          <div class="form-group checkbox-row">
+            <input type="checkbox" id="pActive" checked>
+            <label for="pActive" style="margin:0;">Actif (visible dans la boutique)</label>
+          </div>
+        </div>
+      </div>
+      <div class="modal-actions">
+        <button type="button" class="btn btn-outline" onclick="closeProductModal()">Annuler</button>
+        <button type="submit" class="btn btn-primary" id="saveProductBtn">Enregistrer le produit</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<script src="/js/icons.js"></script>
+<script src="/admin/js/admin.js"></script>
+<script>
+let ALL_PRODUCTS = [];
+let filters = { category: '', active: '', search: '' };
+
+(async function () {
+  const admin = await initAdminPage('products');
+  if (!admin) return;
+  loadProducts();
+})();
+
+async function loadProducts() {
+  const body = document.getElementById('productsBody');
+  body.innerHTML = '<tr class="empty-row"><td colspan="8">Chargement…</td></tr>';
+  try {
+    ALL_PRODUCTS = await AdminAPI.get('/api/products/admin/all');
+    renderTable();
+  } catch (e) {
+    document.getElementById('alertBox').innerHTML = `<div class="alert alert-error">${escapeHtml(e.message)}</div>`;
+  }
+}
+
+function renderTable() {
+  const body = document.getElementById('productsBody');
+  let rows = ALL_PRODUCTS;
+  if (filters.category) rows = rows.filter(p => p.category === filters.category);
+  if (filters.active !== '') rows = rows.filter(p => String(p.active ? 1 : 0) === filters.active);
+  if (filters.search) {
+    const s = filters.search.toLowerCase();
+    rows = rows.filter(p => p.name.toLowerCase().includes(s) || p.team.toLowerCase().includes(s));
+  }
+
+  if (rows.length === 0) {
+    body.innerHTML = '<tr class="empty-row"><td colspan="8">Aucun produit ne correspond à vos filtres.</td></tr>';
+    return;
+  }
+
+  body.innerHTML = rows.map(p => `
+    <tr>
+      <td><div class="cell-img">${p.image_url ? `<img src="${escapeHtml(p.image_url)}" alt="">` : ICONS.shirt}</div></td>
+      <td><strong>${escapeHtml(p.name)}</strong></td>
+      <td>${escapeHtml(p.team)}</td>
+      <td class="text-muted">${escapeHtml(p.category)}${p.league ? ` · ${escapeHtml(p.league)}` : ''}</td>
+      <td class="mono">${fmtMoney(p.price)}</td>
+      <td class="mono">${p.stock <= 5 ? `<span class="pill pill-low">${p.stock}</span>` : p.stock}</td>
+      <td><span class="pill ${p.active ? 'pill-active' : 'pill-inactive'}">${p.active ? 'Actif' : 'Inactif'}</span></td>
+      <td>
+        <button class="btn btn-sm btn-outline" onclick="openProductModal(${p.id})">Modifier</button>
+        <button class="btn btn-sm btn-danger" onclick="deleteProduct(${p.id})">Supprimer</button>
+      </td>
+    </tr>
+  `).join('');
+}
+
+document.getElementById('filterCategory').addEventListener('change', e => { filters.category = e.target.value; renderTable(); });
+document.getElementById('filterActive').addEventListener('change', e => { filters.active = e.target.value; renderTable(); });
+let searchTimer;
+document.getElementById('searchInput').addEventListener('input', e => {
+  clearTimeout(searchTimer);
+  searchTimer = setTimeout(() => { filters.search = e.target.value.trim(); renderTable(); }, 250);
+});
+
+// ---------- Modale ----------
+// modalImages: array of { url, isExisting: bool, file?: File } in display order
+let modalImages = [];
+
+function renderImageGrid() {
+  const grid = document.getElementById('imageGrid');
+  if (modalImages.length === 0) {
+    grid.innerHTML = '<div class="image-grid-empty">Aucune image</div>';
+    return;
+  }
+  grid.innerHTML = modalImages.map((img, i) => `
+    <div class="image-grid-item ${i === 0 ? 'is-primary' : ''}">
+      <img src="${escapeHtml(img.url)}" alt="">
+      ${i === 0 ? '<span class="image-grid-badge">Principale</span>' : ''}
+      <button type="button" class="image-grid-remove" onclick="removeModalImage(${i})" aria-label="Retirer">&times;</button>
+    </div>
+  `).join('');
+}
+
+function removeModalImage(index) {
+  modalImages.splice(index, 1);
+  renderImageGrid();
+}
+
+function openProductModal(id) {
+  document.getElementById('modalAlert').innerHTML = '';
+  document.getElementById('productForm').reset();
+  document.getElementById('pImage').value = '';
+  modalImages = [];
+  document.getElementById('productId').value = '';
+
+  if (id) {
+    const p = ALL_PRODUCTS.find(x => x.id === id);
+    document.getElementById('modalTitle').textContent = 'Modifier le produit';
+    document.getElementById('productId').value = p.id;
+    document.getElementById('pName').value = p.name;
+    document.getElementById('pTeam').value = p.team;
+    document.getElementById('pCategory').value = p.category;
+    document.getElementById('pLeague').value = p.league || '';
+    document.getElementById('pStock').value = p.stock;
+    document.getElementById('pPrice').value = p.price;
+    document.getElementById('pCompare').value = p.compare_at_price || '';
+    document.getElementById('pSizes').value = (p.sizes || []).join(', ');
+    document.getElementById('pDescription').value = p.description || '';
+    document.getElementById('pFeatured').checked = !!p.featured;
+    document.getElementById('pActive').checked = !!p.active;
+    const existingImages = (p.images && p.images.length) ? p.images : (p.image_url ? [p.image_url] : []);
+    modalImages = existingImages.map(url => ({ url, isExisting: true }));
+  } else {
+    document.getElementById('modalTitle').textContent = 'Ajouter un produit';
+    document.getElementById('pActive').checked = true;
+  }
+  renderImageGrid();
+  document.getElementById('productModalOverlay').classList.add('open');
+}
+function closeProductModal() { document.getElementById('productModalOverlay').classList.remove('open'); }
+
+document.getElementById('pImage').addEventListener('change', (e) => {
+  const files = Array.from(e.target.files || []);
+  const remainingSlots = 6 - modalImages.length;
+  if (remainingSlots <= 0) {
+    alert('Maximum 6 images par produit — retirez-en une avant d\'en ajouter une nouvelle.');
+    e.target.value = '';
+    return;
+  }
+  files.slice(0, remainingSlots).forEach(file => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      modalImages.push({ url: reader.result, isExisting: false, file });
+      renderImageGrid();
+    };
+    reader.readAsDataURL(file);
+  });
+  e.target.value = '';
+});
+
+document.getElementById('productForm').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const btn = document.getElementById('saveProductBtn');
+  const alertBox = document.getElementById('modalAlert');
+  alertBox.innerHTML = '';
+  btn.disabled = true; btn.textContent = 'Enregistrement…';
+
+  const id = document.getElementById('productId').value;
+  const fd = new FormData();
+  fd.append('name', document.getElementById('pName').value.trim());
+  fd.append('team', document.getElementById('pTeam').value.trim());
+  fd.append('category', document.getElementById('pCategory').value);
+  fd.append('league', document.getElementById('pLeague').value.trim());
+  fd.append('stock', document.getElementById('pStock').value);
+  fd.append('price', document.getElementById('pPrice').value);
+  fd.append('compare_at_price', document.getElementById('pCompare').value);
+  fd.append('sizes', JSON.stringify(document.getElementById('pSizes').value.split(',').map(s => s.trim()).filter(Boolean)));
+  fd.append('description', document.getElementById('pDescription').value.trim());
+  fd.append('featured', document.getElementById('pFeatured').checked ? '1' : '0');
+  fd.append('active', document.getElementById('pActive').checked ? '1' : '0');
+
+  // Existing images the admin kept (in order), sent so the server knows what NOT to drop
+  const keepImages = modalImages.filter(img => img.isExisting).map(img => img.url);
+  fd.append('keep_images', JSON.stringify(keepImages));
+  // Newly added files, in the order they appear in the grid
+  modalImages.filter(img => !img.isExisting).forEach(img => fd.append('images', img.file));
+
+  try {
+    if (id) await AdminAPI.put(`/api/products/${id}`, fd, true);
+    else await AdminAPI.post('/api/products', fd, true);
+    closeProductModal();
+    await loadProducts();
+  } catch (err) {
+    alertBox.innerHTML = `<div class="alert alert-error">${escapeHtml(err.message)}</div>`;
+  } finally {
+    btn.disabled = false; btn.textContent = 'Enregistrer le produit';
+  }
+});
+
+async function deleteProduct(id) {
+  if (!confirm('Supprimer ce produit ? Cette action est irréversible.')) return;
+  try {
+    await AdminAPI.del(`/api/products/${id}`);
+    await loadProducts();
+  } catch (e) {
+    alert(e.message);
+  }
+}
+</script>
+</body>
+</html>

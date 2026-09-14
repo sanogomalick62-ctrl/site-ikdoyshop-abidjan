@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Commande Envoyée — IKODY SHOP</title>
+<link rel="icon" href="/images/logo.png">
+<link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+
+<div id="siteHeader"></div>
+
+<div class="section">
+  <div class="wrap">
+    <div class="confirm-box" id="confirmBox">
+      <div class="check" id="checkIcon"></div>
+      <h1>Commande reçue !</h1>
+      <p>Merci — nous avons bien reçu votre commande. Conservez cette référence :</p>
+      <div class="order-ref" id="refDisplay">—</div>
+      <ul class="next-steps">
+        <li><span class="step-icon" id="stepIcon1"></span> Nous vous contacterons par téléphone ou WhatsApp sous 24h pour confirmer les tailles et les détails de livraison.</li>
+        <li><span class="step-icon" id="stepIcon2"></span> Le paiement est organisé directement avec notre équipe — rien n'est débité en ligne.</li>
+        <li><span class="step-icon" id="stepIcon3"></span> Vous pouvez suivre l'état de votre commande à tout moment sur la page <a href="/track-order.html">Suivre ma commande</a> avec cette référence et votre numéro de téléphone.</li>
+      </ul>
+      <a href="/shop.html" class="btn btn-primary btn-block">Continuer mes achats</a>
+    </div>
+  </div>
+</div>
+
+<div id="siteFooter"></div>
+
+<script src="/js/icons.js"></script>
+<script src="/js/api.js"></script>
+<script src="/js/cart.js"></script>
+<script src="/js/layout.js"></script>
+<script>
+initLayout('shop');
+document.getElementById('checkIcon').innerHTML = ICONS.checkCircle;
+document.getElementById('stepIcon1').innerHTML = ICONS.phone;
+document.getElementById('stepIcon2').innerHTML = ICONS.creditCard;
+document.getElementById('stepIcon3').innerHTML = ICONS.search;
+const ref = new URLSearchParams(location.search).get('ref');
+if (ref) document.getElementById('refDisplay').textContent = ref;
+else document.getElementById('confirmBox').innerHTML = '<p>Aucune référence de commande trouvée.</p><a href="/shop.html" class="btn btn-primary">Retour à la boutique</a>';
+</script>
+</body>
+</html>

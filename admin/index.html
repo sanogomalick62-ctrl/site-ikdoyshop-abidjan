@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Connexion Admin — IKODY SHOP</title>
+<link rel="icon" href="/images/logo.png">
+<link rel="stylesheet" href="/admin/css/admin.css">
+</head>
+<body>
+<div class="login-screen">
+  <div class="login-card">
+    <div class="brand"><img src="/images/logo.png" alt=""><span>IKODY ADMIN</span></div>
+    <h1>Connectez-vous pour gérer votre boutique</h1>
+    <div id="alertBox"></div>
+    <form id="loginForm">
+      <div class="form-group">
+        <label for="username">Nom d'utilisateur</label>
+        <input type="text" id="username" autocomplete="username" required>
+      </div>
+      <div class="form-group">
+        <label for="password">Mot de passe</label>
+        <input type="password" id="password" autocomplete="current-password" required>
+      </div>
+      <button type="submit" class="btn btn-primary" style="width:100%;" id="loginBtn">Se connecter</button>
+    </form>
+  </div>
+</div>
+
+<script src="/js/icons.js"></script>
+<script src="/admin/js/admin.js"></script>
+<script>
+// Si déjà connecté, passer directement au tableau de bord
+AdminAPI.get('/api/auth/me').then(() => { location.href = '/admin/dashboard.html'; }).catch(() => {});
+
+if (new URLSearchParams(location.search).get('timeout') === '1') {
+  document.getElementById('alertBox').innerHTML =
+    '<div class="alert alert-error">Vous avez été déconnecté automatiquement après une période d\'inactivité. Veuillez vous reconnecter.</div>';
+}
+
+document.getElementById('loginForm').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const btn = document.getElementById('loginBtn');
+  const alertBox = document.getElementById('alertBox');
+  alertBox.innerHTML = '';
+  btn.disabled = true; btn.textContent = 'Connexion…';
+
+  try {
+    await AdminAPI.post('/api/auth/login', {
+      username: document.getElementById('username').value.trim(),
+      password: document.getElementById('password').value
+    });
+    location.href = '/admin/dashboard.html';
+  } catch (err) {
+    alertBox.innerHTML = `<div class="alert alert-error">${escapeHtml(err.message)}</div>`;
+    btn.disabled = false; btn.textContent = 'Se connecter';
+  }
+});
+</script>
+</body>
+</html>

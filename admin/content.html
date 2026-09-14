@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Contenu du Site — IKODY ADMIN</title>
+<link rel="icon" href="/images/logo.png">
+<link rel="stylesheet" href="/admin/css/admin.css">
+</head>
+<body>
+<div class="app-shell">
+  <aside class="sidebar" id="sidebar"></aside>
+  <main class="main-content">
+    <div class="page-title-row">
+      <div>
+        <h1>Contenu du site</h1>
+        <p>Modifiez le texte, les coordonnées et les liens affichés sur votre boutique.</p>
+      </div>
+    </div>
+
+    <div id="alertBox"></div>
+
+    <form id="contentForm">
+      <div class="card">
+        <h3>Identité de la boutique</h3>
+        <div class="form-group"><label for="site_name">Nom de la boutique</label><input type="text" id="site_name"></div>
+        <div class="form-group"><label for="tagline">Slogan</label><input type="text" id="tagline"></div>
+        <div class="form-row-2">
+          <div class="form-group"><label for="currency_symbol">Symbole monétaire</label><input type="text" id="currency_symbol" style="max-width:100px;"></div>
+          <div class="form-group">
+            <label for="accent_color">Couleur d'accent (boutons, promos)</label>
+            <div style="display:flex; align-items:center; gap:10px;">
+              <input type="color" id="accent_color_picker" value="#f4c430" style="width:44px; height:38px; padding:2px; cursor:pointer;">
+              <input type="text" id="accent_color" placeholder="#f4c430" style="flex:1;">
+            </div>
+            <div class="hint">Laissez vide pour garder la couleur jaune par défaut.</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <h3>Page d'accueil</h3>
+        <div class="form-group"><label for="hero_heading">Titre principal</label><input type="text" id="hero_heading"></div>
+        <div class="form-group"><label for="hero_subheading">Sous-titre</label><textarea id="hero_subheading"></textarea></div>
+        <div class="form-group"><label for="banner_message">Bandeau d'annonce en haut de page</label><input type="text" id="banner_message"></div>
+        <div class="form-group"><label for="about_text">Texte "À propos" (pied de page)</label><textarea id="about_text"></textarea></div>
+      </div>
+
+      <div class="card">
+        <h3>Coordonnées</h3>
+        <div class="form-row-2">
+          <div class="form-group"><label for="contact_phone">Téléphone</label><input type="text" id="contact_phone"></div>
+          <div class="form-group"><label for="contact_email">E-mail</label><input type="text" id="contact_email"></div>
+        </div>
+        <div class="form-row-2">
+          <div class="form-group"><label for="contact_whatsapp">Numéro WhatsApp</label><input type="text" id="contact_whatsapp"></div>
+          <div class="form-group"><label for="contact_address">Adresse de la boutique</label><input type="text" id="contact_address"></div>
+        </div>
+      </div>
+
+      <div class="card">
+        <h3>Confiance &amp; livraison</h3>
+        <p style="color:var(--ink-soft); font-size:13px; margin-top:-8px;">Affiché dans une section "Pourquoi nous choisir" sur la page d'accueil — rassure les clients avant qu'ils commandent.</p>
+        <div class="form-group"><label for="delivery_info">Livraison</label><textarea id="delivery_info" placeholder="Zones livrées, délais…"></textarea></div>
+        <div class="form-group"><label for="payment_info">Modes de paiement</label><textarea id="payment_info" placeholder="Orange Money, Wave, paiement à la livraison…"></textarea></div>
+        <div class="form-group"><label for="return_policy">Politique de retour / échange</label><textarea id="return_policy"></textarea></div>
+      </div>
+
+      <div class="card">
+        <h3>Réseaux sociaux</h3>
+        <div class="form-row-3">
+          <div class="form-group"><label for="instagram_url">URL Instagram</label><input type="text" id="instagram_url"></div>
+          <div class="form-group"><label for="facebook_url">URL Facebook</label><input type="text" id="facebook_url"></div>
+          <div class="form-group"><label for="tiktok_url">URL TikTok</label><input type="text" id="tiktok_url"></div>
+        </div>
+      </div>
+
+      <button type="submit" class="btn btn-primary" id="saveBtn">Enregistrer les modifications</button>
+    </form>
+  </main>
+</div>
+
+<script src="/js/icons.js"></script>
+<script src="/admin/js/admin.js"></script>
+<script>
+const FIELDS = ['site_name','tagline','currency_symbol','accent_color','hero_heading','hero_subheading','banner_message','about_text',
+  'contact_phone','contact_email','contact_whatsapp','contact_address','instagram_url','facebook_url','tiktok_url',
+  'delivery_info','payment_info','return_policy'];
+
+(async function () {
+  const admin = await initAdminPage('content');
+  if (!admin) return;
+  try {
+    const content = await AdminAPI.get('/api/content');
+    FIELDS.forEach(k => { if (document.getElementById(k)) document.getElementById(k).value = content[k] || ''; });
+    if (content.accent_color) document.getElementById('accent_color_picker').value = content.accent_color;
+  } catch (e) {
+    document.getElementById('alertBox').innerHTML = `<div class="alert alert-error">${escapeHtml(e.message)}</div>`;
+  }
+})();
+
+// Keep the color swatch and the text field in sync in both directions
+document.getElementById('accent_color_picker').addEventListener('input', (e) => {
+  document.getElementById('accent_color').value = e.target.value;
+});
+document.getElementById('accent_color').addEventListener('input', (e) => {
+  if (/^#[0-9a-fA-F]{6}$/.test(e.target.value)) document.getElementById('accent_color_picker').value = e.target.value;
+});
+
+document.getElementById('contentForm').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const btn = document.getElementById('saveBtn');
+  const alertBox = document.getElementById('alertBox');
+  btn.disabled = true; btn.textContent = 'Enregistrement…';
+  alertBox.innerHTML = '';
+
+  const payload = {};
+  FIELDS.forEach(k => { payload[k] = document.getElementById(k).value; });
+
+  try {
+    await AdminAPI.put('/api/content', payload);
+    alertBox.innerHTML = '<div class="alert alert-success">Enregistré — les modifications sont visibles sur le site dès maintenant.</div>';
+  } catch (err) {
+    alertBox.innerHTML = `<div class="alert alert-error">${escapeHtml(err.message)}</div>`;
+  } finally {
+    btn.disabled = false; btn.textContent = 'Enregistrer les modifications';
+  }
+});
+</script>
+</body>
+</html>
