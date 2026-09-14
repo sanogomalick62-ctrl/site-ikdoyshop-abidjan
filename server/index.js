@@ -88,7 +88,15 @@ app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser());
 
 // Uploaded product images
-app.use('/uploads', express.static(uploadDir));
+// Cache fix: without this, browsers can silently keep serving an old cached copy
+// of index.html/api.js/style.css etc. after a deploy, making a real update look
+// like it "didn't work." no-cache forces a fast revalidation check with the
+// server on every load instead of trusting a possibly-stale local copy.
+const noCacheStatic = (root) => express.static(root, {
+  setHeaders: (res) => res.setHeader('Cache-Control', 'no-cache')
+});
+
+app.use('/uploads', noCacheStatic(uploadDir));
 
 // API routes
 app.use('/api/auth', authRoutes);
@@ -113,10 +121,10 @@ app.get('/api/stats', requireAuth, (req, res) => {
 });
 
 // Static frontend (public shop)
-app.use(express.static(path.join(__dirname, '..', 'public')));
+app.use(noCacheStatic(path.join(__dirname, '..', 'public')));
 
 // Static admin panel (auth is enforced client-side by API calls + server-side on every API route)
-app.use('/admin', express.static(path.join(__dirname, '..', 'admin')));
+app.use('/admin', noCacheStatic(path.join(__dirname, '..', 'admin')));
 
 // Fallbacks
 app.get('/', (req, res) => res.sendFile(path.join(__dirname, '..', 'public', 'index.html')));

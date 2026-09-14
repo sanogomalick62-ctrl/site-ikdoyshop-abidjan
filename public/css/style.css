@@ -532,6 +532,20 @@ textarea { resize: vertical; min-height: 90px; }
 .next-steps .step-icon { color: var(--green-deep); flex-shrink: 0; margin-top: 2px; }
 .next-steps .step-icon .icon-svg { width: 16px; height: 16px; }
 
+.whatsapp-redirect-box {
+  background: rgba(37, 211, 102, 0.1);
+  border: 1px solid rgba(37, 211, 102, 0.35);
+  border-radius: 12px;
+  padding: 18px 20px;
+  margin: 20px 0 0;
+  text-align: center;
+}
+.whatsapp-redirect-box p { margin: 0 0 14px; font-size: 14px; color: var(--ink-soft); }
+.whatsapp-redirect-box #countdownNum { color: #25D366; font-family: var(--font-mono); }
+.whatsapp-redirect-box .btn-primary { background: #25D366; color: white; }
+.whatsapp-redirect-box .btn-primary:hover { background: #1ebe5a; }
+.whatsapp-redirect-box #whatsappIcon .icon-svg { width: 18px; height: 18px; }
+
 /* ---------- Cart drawer ---------- */
 .drawer-overlay {
   position: fixed; inset: 0; background: rgba(31,42,30,0.5);

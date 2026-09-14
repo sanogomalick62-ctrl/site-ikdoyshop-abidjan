@@ -23,7 +23,15 @@
         <li><span class="step-icon" id="stepIcon2"></span> Le paiement est organisé directement avec notre équipe — rien n'est débité en ligne.</li>
         <li><span class="step-icon" id="stepIcon3"></span> Vous pouvez suivre l'état de votre commande à tout moment sur la page <a href="/track-order.html">Suivre ma commande</a> avec cette référence et votre numéro de téléphone.</li>
       </ul>
-      <a href="/shop.html" class="btn btn-primary btn-block">Continuer mes achats</a>
+
+      <div class="whatsapp-redirect-box" id="whatsappBox" style="display:none;">
+        <p>Redirection vers notre WhatsApp dans <strong id="countdownNum">5</strong> secondes pour finaliser votre commande…</p>
+        <a href="#" class="btn btn-primary btn-block" id="whatsappNowBtn">
+          <span id="whatsappIcon"></span> Continuer maintenant sur WhatsApp
+        </a>
+      </div>
+
+      <a href="/shop.html" class="btn btn-outline btn-block" style="margin-top:10px;">Continuer mes achats</a>
     </div>
   </div>
 </div>
@@ -40,9 +48,46 @@ document.getElementById('checkIcon').innerHTML = ICONS.checkCircle;
 document.getElementById('stepIcon1').innerHTML = ICONS.phone;
 document.getElementById('stepIcon2').innerHTML = ICONS.creditCard;
 document.getElementById('stepIcon3').innerHTML = ICONS.search;
+document.getElementById('whatsappIcon').innerHTML = ICONS.message;
+
 const ref = new URLSearchParams(location.search).get('ref');
-if (ref) document.getElementById('refDisplay').textContent = ref;
-else document.getElementById('confirmBox').innerHTML = '<p>Aucune référence de commande trouvée.</p><a href="/shop.html" class="btn btn-primary">Retour à la boutique</a>';
+if (ref) {
+  document.getElementById('refDisplay').textContent = ref;
+  setupWhatsappRedirect(ref);
+} else {
+  document.getElementById('confirmBox').innerHTML = '<p>Aucune référence de commande trouvée.</p><a href="/shop.html" class="btn btn-primary">Retour à la boutique</a>';
+}
+
+async function setupWhatsappRedirect(orderRef) {
+  // Site content (including the WhatsApp number) loads asynchronously via
+  // initLayout -> loadSiteContent, so wait for it rather than racing it.
+  const content = await loadSiteContent();
+  const rawNumber = (content.contact_whatsapp || '').replace(/[^\d]/g, '');
+  if (!rawNumber) return; // no WhatsApp number configured - skip the redirect entirely
+
+  const message = `Bonjour, je viens de passer une commande sur IKODY SHOP (référence ${orderRef}). Merci de me confirmer les tailles et la livraison !`;
+  const whatsappUrl = `https://wa.me/${rawNumber}?text=${encodeURIComponent(message)}`;
+
+  const box = document.getElementById('whatsappBox');
+  const countdownEl = document.getElementById('countdownNum');
+  const nowBtn = document.getElementById('whatsappNowBtn');
+  nowBtn.href = whatsappUrl;
+  box.style.display = 'block';
+
+  let remaining = 5;
+  countdownEl.textContent = remaining;
+  const timer = setInterval(() => {
+    remaining -= 1;
+    countdownEl.textContent = Math.max(remaining, 0);
+    if (remaining <= 0) {
+      clearInterval(timer);
+      location.href = whatsappUrl;
+    }
+  }, 1000);
+
+  // Clicking "continue now" should not also trigger the timed redirect a moment later.
+  nowBtn.addEventListener('click', () => clearInterval(timer));
+}
 </script>
 </body>
 </html>
